@@ -106,11 +106,7 @@ class ApiService {
     });
   }
 
-  // 비디오 관련 API
-  async getVideos(): Promise<Video[]> {
-    const response = await this.axiosInstance.get('/api/videos');
-    return response.data;
-  }
+
 
   // 스트림 URL 생성
   getStreamUrl(cameraId: string): string {
@@ -146,14 +142,7 @@ export interface Event {
   createdAt: string;
 }
 
-export interface Video {
-  id: string;
-  filename: string;
-  duration: number;
-  size: number;
-  ts: string;
-  camera: Camera;
-}
+
 
 export interface EventFilterParams {
   cameraId?: string;

@@ -49,7 +49,7 @@ const CameraManagement: React.FC = () => {
     lng: 0,
     rtspUrl: '',
     description: '',
-    yoloEnabled: false, // 기본값: YOLO 비활성화
+    yoloEnabled: true, // 기본값: YOLO 활성화
   });
 
   useEffect(() => {
@@ -89,7 +89,7 @@ const CameraManagement: React.FC = () => {
         lng: 0,
         rtspUrl: '',
         description: '',
-        yoloEnabled: false,
+        yoloEnabled: true,
       });
     }
     
@@ -105,7 +105,7 @@ const CameraManagement: React.FC = () => {
       lng: 0,
       rtspUrl: '',
       description: '',
-      yoloEnabled: false,
+      yoloEnabled: true,
     });
   };
 
@@ -269,19 +269,23 @@ const CameraManagement: React.FC = () => {
               <TextField
                 label="위도"
                 type="number"
-                value={formData.lat}
+                value={formData.lat === 0 ? '' : formData.lat}
                 onChange={(e) => setFormData({ ...formData, lat: parseFloat(e.target.value) || 0 })}
                 required
                 fullWidth
+                placeholder="예: 37.5665"
+                helperText="위도 좌표 (예: 37.5665)"
                 inputProps={{ step: 'any' }}
               />
               <TextField
                 label="경도"
                 type="number"
-                value={formData.lng}
+                value={formData.lng === 0 ? '' : formData.lng}
                 onChange={(e) => setFormData({ ...formData, lng: parseFloat(e.target.value) || 0 })}
                 required
                 fullWidth
+                placeholder="예: 126.9780"
+                helperText="경도 좌표 (예: 126.9780)"
                 inputProps={{ step: 'any' }}
               />
             </Box>

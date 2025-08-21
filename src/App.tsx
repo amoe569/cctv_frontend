@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import CameraDetail from './pages/CameraDetail/CameraDetail';
 import CameraManagement from './pages/CameraManagement/CameraManagement';
 import EventManagement from './pages/EventManagement/EventManagement';
-import VideoList from './pages/VideoList/VideoList';
+
 import './App.css';
 
 // 다크 테마 설정
@@ -41,7 +41,7 @@ function App() {
             <Route path="/camera/:id" element={<CameraDetail />} />
             <Route path="/cameras" element={<CameraManagement />} />
             <Route path="/events" element={<EventManagement />} />
-            <Route path="/videos" element={<VideoList />} />
+
           </Routes>
         </Layout>
       </Router>
