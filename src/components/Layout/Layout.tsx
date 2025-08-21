@@ -19,7 +19,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const DRAWER_WIDTH = 240;
+const DRAWER_WIDTH = 200; // 240 → 200으로 줄임
 
 interface LayoutProps {
   children: React.ReactNode;

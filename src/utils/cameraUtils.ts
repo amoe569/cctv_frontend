@@ -36,11 +36,9 @@ export const getCameraStatusText = (status: Camera['status']): string => {
   }
 };
 
-// 카메라 상태 옵션 목록
+// 카메라 상태 옵션 목록 (주요 상태만)
 export const CAMERA_STATUS_OPTIONS = [
   { value: 'ONLINE', label: '🟢 온라인', color: '#28a745' },
   { value: 'OFFLINE', label: '⚫ 오프라인', color: '#6c757d' },
-  { value: 'MAINTENANCE', label: '🔧 점검중', color: '#ffc107' },
-  { value: 'ERROR', label: '🔴 오류', color: '#dc3545' },
   { value: 'WARNING', label: '🟠 경고', color: '#fd7e14' },
 ] as const;

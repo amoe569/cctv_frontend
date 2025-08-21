@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Paper,
@@ -11,12 +11,16 @@ import {
   Select,
   MenuItem,
   Button,
+  Chip,
+  Tooltip,
 } from '@mui/material';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import apiService, { Camera, Event } from '../../services/api';
 import { getCameraStatusColor, getCameraStatusIcon, CAMERA_STATUS_OPTIONS } from '../../utils/cameraUtils';
+import useRealtimeCamera from '../../hooks/useRealtimeCamera';
+import useNotification from '../../hooks/useNotification';
+import LoadingFallback from '../../components/LoadingFallback/LoadingFallback';
 
 // Leaflet 아이콘 문제 해결
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -28,124 +32,54 @@ L.Icon.Default.mergeOptions({
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [cameras, setCameras] = useState<Camera[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
-    open: false,
-    message: '',
-    severity: 'info'
+  
+  // 실시간 카메라 데이터 및 알림 관리
+  const { 
+    cameras, 
+    loading, 
+    error, 
+    lastUpdated, 
+    isConnected, 
+    updateCameraStatus,
+    getCameraCountByStatus,
+    reconnectSSE,
+    loadCameras 
+  } = useRealtimeCamera({ 
+    autoRefreshInterval: 5000, // 5초마다 자동 새로고침 (빠른 반영)
+    showNotifications: true 
   });
+  
+  const { notifications, removeNotification } = useNotification();
   
   // 카메라 상태 변경
   const [selectedCamera, setSelectedCamera] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [statusChanging, setStatusChanging] = useState(false);
 
-  useEffect(() => {
-    loadCameras();
-    setupSSE();
-  }, []);
-
-  const loadCameras = async () => {
-    try {
-      setLoading(true);
-      const data = await apiService.getCameras();
-      setCameras(data);
-    } catch (err) {
-      setError('카메라 데이터를 불러오는 중 오류가 발생했습니다.');
-      console.error('카메라 로드 오류:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setupSSE = () => {
-    console.log('🔌 Dashboard SSE 연결 설정 중...');
-    
-    const eventSource = apiService.createEventStream();
-    
-    eventSource.onopen = () => {
-      console.log('✅ Dashboard SSE 연결 성공');
-    };
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data: Event = JSON.parse(event.data);
-        console.log('📡 Dashboard SSE 이벤트 수신:', data);
-        
-        // 알림 표시
-        showNotification(
-          `${data.cameraName}에서 ${data.type} 이벤트 발생`,
-          'info'
-        );
-        
-        // 카메라 상태 업데이트 (WARNING 상태로 변경된 경우)
-        if (data.type === 'traffic_heavy') {
-          console.log(`🚨 카메라 ${data.cameraId} 상태를 WARNING으로 변경`);
-          setCameras(prev => prev.map(camera => 
-            camera.id === data.cameraId 
-              ? { ...camera, status: 'WARNING' as const }
-              : camera
-          ));
-        }
-        
-        // 카메라 목록 새로고침 (최신 상태 반영)
-        loadCameras();
-        
-      } catch (err) {
-        console.error('❌ Dashboard SSE 이벤트 파싱 오류:', err);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('❌ Dashboard SSE 연결 오류:', error);
-      
-      // 3초 후 재연결 시도
-      setTimeout(() => {
-        console.log('🔄 Dashboard SSE 재연결 시도...');
-        setupSSE();
-      }, 3000);
-    };
-
-    return () => {
-      console.log('🔌 Dashboard SSE 연결 해제');
-      eventSource.close();
-    };
-  };
-
-  const showNotification = (message: string, severity: 'success' | 'error' | 'info') => {
-    setNotification({ open: true, message, severity });
-  };
-
+  // 카메라 상태 변경 핸들러
   const handleStatusChange = async () => {
     if (!selectedCamera || !selectedStatus) {
-      showNotification('카메라와 상태를 선택해주세요.', 'error');
       return;
     }
 
     try {
       setStatusChanging(true);
-      const updatedCamera = await apiService.updateCameraStatus(selectedCamera, selectedStatus);
+      await updateCameraStatus(selectedCamera, selectedStatus);
       
-      // 카메라 목록 업데이트
-      setCameras(prev => prev.map(camera => 
-        camera.id === selectedCamera ? updatedCamera : camera
-      ));
-      
-      showNotification(`${updatedCamera.name}의 상태가 ${selectedStatus}로 변경되었습니다.`, 'success');
+      // 선택 초기화
       setSelectedCamera('');
       setSelectedStatus('');
     } catch (err) {
-      showNotification('카메라 상태 변경에 실패했습니다.', 'error');
       console.error('상태 변경 오류:', err);
     } finally {
       setStatusChanging(false);
     }
   };
 
+
+
   // 카메라 상태별 마커 색상
-  const getMarkerIcon = (camera: Camera) => {
+  const getMarkerIcon = (camera: any) => {
     const color = getCameraStatusColor(camera.status);
     return new L.DivIcon({
       html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
@@ -155,69 +89,162 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  if (loading) return <Typography>로딩 중...</Typography>;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  // 카메라 상태 통계
+  const cameraStats = getCameraCountByStatus();
+
+  if (loading) {
+    return (
+      <LoadingFallback
+        message="카메라 데이터를 불러오는 중..."
+        onRefresh={loadCameras}
+        timeout={8000}
+      />
+    );
+  }
+  
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert 
+          severity="error" 
+          action={
+            <Button color="inherit" size="small" onClick={() => loadCameras()}>
+              다시 시도
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        대시보드
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4">
+          대시보드
+        </Typography>
+        
+        {/* 실시간 연결 상태 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title={isConnected ? "실시간 연결 활성" : "연결 끊김 - 클릭하여 재연결"}>
+            <Chip
+              label={isConnected ? "🟢 실시간" : "🔴 오프라인"}
+              color={isConnected ? "success" : "error"}
+              size="small"
+              onClick={!isConnected ? reconnectSSE : undefined}
+              sx={{ cursor: !isConnected ? 'pointer' : 'default' }}
+            />
+          </Tooltip>
+          {lastUpdated && (
+            <Typography variant="caption" color="text.secondary">
+              마지막 업데이트: {lastUpdated.toLocaleTimeString()}
+            </Typography>
+          )}
+        </Box>
+      </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {/* 카메라 상태 변경 패널 */}
-        <Box>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              ⚙️ 카메라 상태 변경
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-              <FormControl sx={{ minWidth: 200 }}>
-                <InputLabel>카메라 선택</InputLabel>
-                <Select
-                  value={selectedCamera}
-                  onChange={(e) => setSelectedCamera(e.target.value)}
-                  label="카메라 선택"
+        {/* 카메라 상태 변경과 현황을 한 줄에 배치 */}
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          {/* 카메라 상태 변경 패널 */}
+          <Box sx={{ flex: '1 1 450px', minWidth: '450px' }}>
+            <Paper sx={{ p: 1.5, height: '100%' }}>
+              <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mb: 1 }}>
+                ⚙️ 카메라 상태 변경
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <FormControl sx={{ minWidth: 160 }}>
+                  <InputLabel>카메라 선택</InputLabel>
+                  <Select
+                    value={selectedCamera}
+                    onChange={(e) => setSelectedCamera(e.target.value)}
+                    label="카메라 선택"
+                    size="small"
+                  >
+                    {cameras.map((camera) => (
+                      <MenuItem key={camera.id} value={camera.id}>
+                        {getCameraStatusIcon(camera.status)} {camera.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <FormControl sx={{ minWidth: 110 }}>
+                  <InputLabel>상태 선택</InputLabel>
+                  <Select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    label="상태 선택"
+                    size="small"
+                  >
+                    {CAMERA_STATUS_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <Button
+                  variant="contained"
+                  onClick={handleStatusChange}
+                  disabled={statusChanging || !selectedCamera || !selectedStatus}
+                  size="small"
+                  sx={{ px: 2 }}
                 >
-                  {cameras.map((camera) => (
-                    <MenuItem key={camera.id} value={camera.id}>
-                      {getCameraStatusIcon(camera.status)} {camera.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              <FormControl sx={{ minWidth: 150 }}>
-                <InputLabel>상태 선택</InputLabel>
-                <Select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  label="상태 선택"
-                >
-                  {CAMERA_STATUS_OPTIONS.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              <Button
-                variant="contained"
-                onClick={handleStatusChange}
-                disabled={statusChanging || !selectedCamera || !selectedStatus}
-              >
-                {statusChanging ? '변경 중...' : '상태 변경'}
-              </Button>
-            </Box>
-          </Paper>
+                  {statusChanging ? '변경 중...' : '상태 변경'}
+                </Button>
+              </Box>
+            </Paper>
+          </Box>
+
+          {/* 카메라 현황 통계 - 컴팩트 사이즈 */}
+          <Box sx={{ flex: '0 1 280px', minWidth: '280px', maxWidth: '350px' }}>
+            <Paper sx={{ p: 1.5, height: '100%' }}>
+              <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mb: 1 }}>
+                📊 카메라 현황
+              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                {CAMERA_STATUS_OPTIONS.map((status) => {
+                  const count = cameraStats[status.value] || 0;
+                  return (
+                    <Box
+                      key={status.value}
+                      sx={{
+                        textAlign: 'center',
+                        p: 1,
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        borderRadius: 2,
+                        border: `2px solid ${status.color}`,
+                        minWidth: '60px',
+                        flex: 1,
+                        transition: 'transform 0.2s ease',
+                        '&:hover': {
+                          transform: 'scale(1.02)',
+                        }
+                      }}
+                    >
+                      <Typography variant="h5" sx={{ color: status.color, fontWeight: 'bold', mb: 0.25, fontSize: '1.5rem' }}>
+                        {count}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontSize: '0.65rem', fontWeight: 'medium', lineHeight: 1.2 }}>
+                        {status.label}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Paper>
+          </Box>
         </Box>
 
         {/* 지도 */}
         <Box>
           <Paper sx={{ p: 2, height: 600 }}>
             <Typography variant="h6" gutterBottom>
-              카메라 위치 및 상태
+              🗺️ 카메라 위치 및 상태
             </Typography>
             <Box sx={{ height: 'calc(100% - 40px)' }}>
               <MapContainer
@@ -262,55 +289,27 @@ const Dashboard: React.FC = () => {
             </Box>
           </Paper>
         </Box>
-
-        {/* 카메라 통계 */}
-        <Box>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              카메라 현황
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2 }}>
-              {CAMERA_STATUS_OPTIONS.map((status) => {
-                const count = cameras.filter(camera => camera.status === status.value).length;
-                return (
-                  <Box
-                    key={status.value}
-                    sx={{
-                      textAlign: 'center',
-                      p: 2,
-                      backgroundColor: 'rgba(255,255,255,0.05)',
-                      borderRadius: 2,
-                      border: `2px solid ${status.color}`,
-                    }}
-                  >
-                    <Typography variant="h4" sx={{ color: status.color }}>
-                      {count}
-                    </Typography>
-                    <Typography variant="body2">
-                      {status.label}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-          </Paper>
-        </Box>
       </Box>
 
-      {/* 알림 스낵바 */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={5000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-      >
-        <Alert
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-          severity={notification.severity}
-          sx={{ width: '100%' }}
+      {/* 실시간 알림 스낵바 */}
+      {notifications.map((notification) => (
+        <Snackbar
+          key={notification.id}
+          open={true}
+          autoHideDuration={notification.duration}
+          onClose={() => removeNotification(notification.id)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: `${notifications.indexOf(notification) * 70}px` }}
         >
-          {notification.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={() => removeNotification(notification.id)}
+            severity={notification.severity}
+            sx={{ width: '100%' }}
+          >
+            {notification.message}
+          </Alert>
+        </Snackbar>
+      ))}
     </Box>
   );
 };
