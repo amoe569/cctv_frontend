@@ -21,6 +21,8 @@ import { getCameraStatusColor, getCameraStatusIcon, CAMERA_STATUS_OPTIONS } from
 import useRealtimeCamera from '../../hooks/useRealtimeCamera';
 import useNotification from '../../hooks/useNotification';
 import LoadingFallback from '../../components/LoadingFallback/LoadingFallback';
+import AlertModal from '../../components/AlertModal/AlertModal';
+import useAlertModal from '../../hooks/useAlertModal';
 
 // Leaflet 아이콘 문제 해결
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -33,6 +35,18 @@ L.Icon.Default.mergeOptions({
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   
+  // 알람 모달 관리 (먼저 선언)
+  const { 
+    currentAlert, 
+    isOpen: isAlertOpen, 
+    showEventAlert, 
+    showCameraStatusAlert, 
+    closeAlert 
+  } = useAlertModal({
+    defaultAutoClose: 10000, // 10초 자동 닫기
+    maxAlerts: 5
+  });
+
   // 실시간 카메라 데이터 및 알림 관리
   const { 
     cameras, 
@@ -46,7 +60,9 @@ const Dashboard: React.FC = () => {
     loadCameras 
   } = useRealtimeCamera({ 
     autoRefreshInterval: 5000, // 5초마다 자동 새로고침 (빠른 반영)
-    showNotifications: true 
+    showNotifications: true,
+    onEventAlert: showEventAlert, // 이벤트 알람 모달
+    onCameraStatusAlert: showCameraStatusAlert // 카메라 상태 알람 모달
   });
   
   const { notifications, removeNotification } = useNotification();
@@ -200,13 +216,13 @@ const Dashboard: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* 카메라 현황 통계 - 컴팩트 사이즈 */}
-          <Box sx={{ flex: '0 1 280px', minWidth: '280px', maxWidth: '350px' }}>
+          {/* 카메라 현황 통계 - 5개 상태 */}
+          <Box sx={{ flex: '0 1 400px', minWidth: '400px', maxWidth: '450px' }}>
             <Paper sx={{ p: 1.5, height: '100%' }}>
               <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mb: 1 }}>
                 📊 카메라 현황
               </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.8, flexWrap: 'wrap' }}>
                 {CAMERA_STATUS_OPTIONS.map((status) => {
                   const count = cameraStats[status.value] || 0;
                   return (
@@ -214,22 +230,23 @@ const Dashboard: React.FC = () => {
                       key={status.value}
                       sx={{
                         textAlign: 'center',
-                        p: 1,
+                        p: 0.8,
                         backgroundColor: 'rgba(255,255,255,0.05)',
                         borderRadius: 2,
                         border: `2px solid ${status.color}`,
-                        minWidth: '60px',
-                        flex: 1,
+                        minWidth: '45px',
+                        flex: '1 1 auto',
+                        maxWidth: '18%', // 5개가 한 줄에 들어가도록
                         transition: 'transform 0.2s ease',
                         '&:hover': {
-                          transform: 'scale(1.02)',
+                          transform: 'scale(1.05)',
                         }
                       }}
                     >
-                      <Typography variant="h5" sx={{ color: status.color, fontWeight: 'bold', mb: 0.25, fontSize: '1.5rem' }}>
+                      <Typography variant="h6" sx={{ color: status.color, fontWeight: 'bold', mb: 0.2, fontSize: '1.2rem' }}>
                         {count}
                       </Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.65rem', fontWeight: 'medium', lineHeight: 1.2 }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.55rem', fontWeight: 'medium', lineHeight: 1.1 }}>
                         {status.label}
                       </Typography>
                     </Box>
@@ -246,12 +263,12 @@ const Dashboard: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               🗺️ 카메라 위치 및 상태
             </Typography>
-            <Box sx={{ height: 'calc(100% - 40px)' }}>
-              <MapContainer
-                center={[36.8218, 127.1530]}
-                zoom={14}
-                style={{ height: '100%', width: '100%' }}
-              >
+                                    <Box sx={{ height: 'calc(100% - 40px)' }}>
+                          <MapContainer
+                            center={[36.8365730, 127.1456889]}
+                            zoom={13}
+                            style={{ height: '100%', width: '100%' }}
+                          >
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -310,6 +327,14 @@ const Dashboard: React.FC = () => {
           </Alert>
         </Snackbar>
       ))}
+
+      {/* 알람 모달 */}
+      <AlertModal
+        alert={currentAlert}
+        open={isAlertOpen}
+        onClose={closeAlert}
+        onViewCamera={(cameraId) => navigate(`/camera/${cameraId}`)}
+      />
     </Box>
   );
 };

@@ -6,10 +6,17 @@ import useNotification from './useNotification';
 interface RealtimeCameraOptions {
   autoRefreshInterval?: number;
   showNotifications?: boolean;
+  onEventAlert?: (eventData: any) => void;
+  onCameraStatusAlert?: (cameraName: string, oldStatus: string, newStatus: string) => void;
 }
 
 export const useRealtimeCamera = (options: RealtimeCameraOptions = {}) => {
-  const { autoRefreshInterval = 60000, showNotifications = true } = options; // 60초마다 자동 새로고침
+  const { 
+    autoRefreshInterval = 60000, 
+    showNotifications = true,
+    onEventAlert,
+    onCameraStatusAlert 
+  } = options; // 60초마다 자동 새로고침
   
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +47,10 @@ export const useRealtimeCamera = (options: RealtimeCameraOptions = {}) => {
             data.forEach(newCamera => {
               const oldCamera = prevCameras.find(c => c.id === newCamera.id);
               if (oldCamera && oldCamera.status !== newCamera.status) {
+                // 기존 토스트 알림
                 showCameraStatusNotification(newCamera.name, oldCamera.status, newCamera.status);
+                // 새로운 알람 모달
+                onCameraStatusAlert?.(newCamera.name, oldCamera.status, newCamera.status);
               }
             });
           }
@@ -118,6 +128,8 @@ export const useRealtimeCamera = (options: RealtimeCameraOptions = {}) => {
     // 이벤트 알림 표시
     if (showNotifications) {
       showEventNotification(data);
+      // 알람 모달도 표시
+      onEventAlert?.(data);
     }
     
     // 카메라 상태 업데이트 (traffic_heavy 이벤트 시 WARNING 상태로)

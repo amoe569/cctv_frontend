@@ -19,7 +19,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const DRAWER_WIDTH = 200; // 240 → 200으로 줄임
+const DRAWER_WIDTH = 250; // 네비게이션 창 가로 늘림
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -71,7 +71,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <Toolbar />
         <Box sx={{ overflow: 'auto', mt: 2 }}>
-          <List>
+          <List sx={{ px: 1 }}>
             {menuItems.map((item) => (
               <ListItem
                 key={item.text}
@@ -79,19 +79,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 sx={{
                   cursor: 'pointer',
                   mx: 1,
+                  my: 0.5,
+                  px: 2, // 버튼 내부 좌우 패딩 줄임
+                  py: 1.5, // 버튼 내부 상하 패딩 조정
                   borderRadius: 2,
+                  minHeight: 48, // 최소 높이 설정
+                  maxWidth: '90%', // 버튼 최대 가로 제한
                   backgroundColor:
                     location.pathname === item.path ? '#667eea' : 'transparent',
                   '&:hover': {
                     backgroundColor:
                       location.pathname === item.path ? '#5a6fd8' : '#444',
+                    transform: 'translateX(4px)', // 호버 시 살짝 이동 효과
                   },
+                  transition: 'all 0.2s ease-in-out', // 부드러운 전환 효과
                 }}
               >
-                <ListItemIcon sx={{ color: 'inherit' }}>
+                <ListItemIcon 
+                  sx={{ 
+                    color: 'inherit',
+                    minWidth: 36, // 아이콘 영역 가로 줄임
+                  }}
+                >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={item.text} />
+                <ListItemText 
+                  primary={item.text}
+                  sx={{
+                    '& .MuiListItemText-primary': {
+                      fontSize: '0.9rem', // 텍스트 크기 살짝 줄임
+                      fontWeight: location.pathname === item.path ? 600 : 400,
+                    }
+                  }}
+                />
               </ListItem>
             ))}
           </List>

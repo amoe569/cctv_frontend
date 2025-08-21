@@ -25,6 +25,9 @@ export const getEventColor = (eventType: string): string => {
 // 이벤트 타입에 따른 한글 표시명 반환
 export const getEventDisplayName = (eventType: string): string => {
   if (eventType === 'traffic_heavy') return '통행량 많음';
+  if (eventType === 'test_event') return '테스트 이벤트';
+  if (eventType === 'camera_status') return '카메라 상태 변경';
+  if (eventType === 'system_error') return '시스템 오류';
   if (eventType === 'person') return '사람 감지';
   if (eventType.includes('car')) return '차량 감지';
   if (eventType.includes('truck')) return '트럭 감지';
@@ -69,6 +72,18 @@ export const formatDateTime = (dateString: string): string => {
 
 export const formatTime = (dateString: string): string => {
   return new Date(dateString).toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+};
+
+// 이벤트 시간 포맷팅 (Date 객체용)
+export const formatEventTime = (date: Date): string => {
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
