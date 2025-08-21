@@ -69,6 +69,20 @@ class ApiService {
     return response.data;
   }
 
+  async createCamera(cameraData: CameraCreateData): Promise<Camera> {
+    const response = await this.axiosInstance.post('/api/cameras', cameraData);
+    return response.data;
+  }
+
+  async updateCamera(id: string, cameraData: CameraUpdateData): Promise<Camera> {
+    const response = await this.axiosInstance.put(`/api/cameras/${id}`, cameraData);
+    return response.data;
+  }
+
+  async deleteCamera(id: string): Promise<void> {
+    await this.axiosInstance.delete(`/api/cameras/${id}`);
+  }
+
   // 이벤트 관련 API
   async getEvents(): Promise<Event[]> {
     const response = await this.axiosInstance.get('/api/events');
@@ -113,6 +127,8 @@ export interface Camera {
   lng: number;
   rtspUrl?: string;
   streamUrl?: string;
+  yoloEnabled?: boolean;
+  metaJson?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -155,6 +171,24 @@ export interface PaginatedEvents {
   totalPages: number;
   size: number;
   number: number;
+}
+
+export interface CameraCreateData {
+  name: string;
+  lat: number;
+  lng: number;
+  rtspUrl?: string;
+  description?: string;
+  yoloEnabled?: boolean;
+}
+
+export interface CameraUpdateData {
+  name: string;
+  lat: number;
+  lng: number;
+  rtspUrl?: string;
+  description?: string;
+  yoloEnabled?: boolean;
 }
 
 // API 서비스 인스턴스 내보내기

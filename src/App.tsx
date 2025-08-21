@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard/Dashboard';
 import CameraDetail from './pages/CameraDetail/CameraDetail';
+import CameraManagement from './pages/CameraManagement/CameraManagement';
 import EventManagement from './pages/EventManagement/EventManagement';
 import VideoList from './pages/VideoList/VideoList';
 import './App.css';
@@ -38,6 +39,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/camera/:id" element={<CameraDetail />} />
+            <Route path="/cameras" element={<CameraManagement />} />
             <Route path="/events" element={<EventManagement />} />
             <Route path="/videos" element={<VideoList />} />
           </Routes>

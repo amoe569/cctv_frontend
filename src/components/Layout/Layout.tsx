@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
+  Videocam as VideocamIcon,
   Event as EventIcon,
   VideoLibrary as VideoIcon,
 } from '@mui/icons-material';
@@ -30,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const menuItems = [
     { text: '대시보드', icon: <DashboardIcon />, path: '/' },
+    { text: '카메라 관리', icon: <VideocamIcon />, path: '/cameras' },
     { text: '이벤트 관리', icon: <EventIcon />, path: '/events' },
     { text: '저장 영상', icon: <VideoIcon />, path: '/videos' },
   ];
