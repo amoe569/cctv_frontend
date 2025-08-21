@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Grid,
   Paper,
   Typography,
   Box,
@@ -27,6 +27,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,8 +204,8 @@ const Dashboard: React.FC = () => {
             </Typography>
             <Box sx={{ height: 'calc(100% - 40px)' }}>
               <MapContainer
-                center={[37.5665, 126.9780]}
-                zoom={13}
+                center={[36.8218, 127.1530]}
+                zoom={14}
                 style={{ height: '100%', width: '100%' }}
               >
                 <TileLayer
@@ -232,7 +233,7 @@ const Dashboard: React.FC = () => {
                           size="small"
                           variant="outlined"
                           sx={{ mt: 1 }}
-                          onClick={() => window.open(`/camera/${camera.id}`, '_blank')}
+                          onClick={() => navigate(`/camera/${camera.id}`)}
                         >
                           상세보기
                         </Button>

@@ -3,11 +3,9 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   Card,
   CardContent,
   Alert,
-  Chip,
 } from '@mui/material';
 import { VideoLibrary as VideoIcon, AccessTime, Storage } from '@mui/icons-material';
 import apiService, { Video } from '../../services/api';

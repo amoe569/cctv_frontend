@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Grid,
   Paper,
   Typography,
   Box,
@@ -17,7 +16,7 @@ import {
 import { ArrowBack } from '@mui/icons-material';
 import apiService, { Camera, Event } from '../../services/api';
 import { getCameraStatusColor, getCameraStatusIcon, getCameraStatusText, CAMERA_STATUS_OPTIONS } from '../../utils/cameraUtils';
-import { formatDateTime, formatTime } from '../../utils/eventUtils';
+import { formatDateTime } from '../../utils/eventUtils';
 import EventList from '../../components/EventList/EventList';
 
 const CameraDetail: React.FC = () => {

@@ -1,4 +1,4 @@
-import { Event } from '../services/api';
+// import { Event } from '../services/api'; // 현재 사용하지 않음
 
 // 이벤트 타입에 따른 아이콘 반환
 export const getEventIcon = (eventType: string): string => {

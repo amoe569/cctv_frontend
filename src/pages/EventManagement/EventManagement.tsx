@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -84,7 +83,7 @@ const EventManagement: React.FC = () => {
   };
 
   const handleSearch = () => {
-    searchEvents();
+    searchEvents(filters);
   };
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
