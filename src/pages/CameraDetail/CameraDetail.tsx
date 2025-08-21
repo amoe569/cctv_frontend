@@ -49,53 +49,97 @@ const CameraDetail: React.FC = () => {
   }, [id]);
 
   const loadCameraData = async () => {
-    if (!id) return;
+    if (!id) {
+      console.error('카메라 ID가 없습니다');
+      setError('카메라 ID가 없습니다');
+      setLoading(false);
+      return;
+    }
+    
+    console.log(`🔍 카메라 데이터 로딩 시작: ${id}`);
     
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('📡 API 호출 시작...');
       const [cameraData, eventsData] = await Promise.all([
         apiService.getCameraById(id),
         apiService.getEventsByCamera(id)
       ]);
       
+      console.log('✅ 카메라 데이터 로드 성공:', cameraData);
+      console.log('✅ 이벤트 데이터 로드 성공:', eventsData.length, '개');
+      
+      if (eventsData.length === 0) {
+        console.log('⚠️ 카메라', id, '에 대한 이벤트가 없습니다');
+      } else {
+        console.log('📋 최근 이벤트:', eventsData.slice(0, 3));
+      }
+      
       setCamera(cameraData);
       setEvents(eventsData);
       setSelectedStatus(cameraData.status);
-    } catch (err) {
-      setError('카메라 데이터를 불러오는 중 오류가 발생했습니다.');
-      console.error('카메라 데이터 로드 오류:', err);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || '알 수 없는 오류가 발생했습니다';
+      const errorStatus = err.response?.status || 'Unknown';
+      
+      console.error('❌ 카메라 데이터 로드 실패:', {
+        status: errorStatus,
+        message: errorMessage,
+        error: err
+      });
+      
+      setError(`카메라 데이터 로드 실패 (${errorStatus}): ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
   const setupSSE = () => {
+    console.log(`🔌 CameraDetail(${id}) SSE 연결 설정 중...`);
+    
     const eventSource = apiService.createEventStream();
+    
+    eventSource.onopen = () => {
+      console.log(`✅ CameraDetail(${id}) SSE 연결 성공`);
+    };
     
     eventSource.onmessage = (event) => {
       try {
         const data: Event = JSON.parse(event.data);
+        console.log(`📡 CameraDetail(${id}) SSE 이벤트 수신:`, data);
         
         // 현재 카메라의 이벤트만 처리
-        if (data.camera.id === id) {
+        if (data.cameraId === id) {
+          console.log(`🎯 현재 카메라(${id})의 이벤트 - 목록에 추가`);
           setEvents(prev => [data, ...prev]);
           
           // 카메라 상태 업데이트
           if (data.type === 'traffic_heavy') {
+            console.log(`🚨 카메라 ${id} 상태를 WARNING으로 변경`);
             setCamera(prev => prev ? { ...prev, status: 'WARNING' } : null);
           }
+        } else {
+          console.log(`📡 다른 카메라(${data.cameraId})의 이벤트 - 무시`);
         }
       } catch (err) {
-        console.error('SSE 이벤트 파싱 오류:', err);
+        console.error(`❌ CameraDetail(${id}) SSE 이벤트 파싱 오류:`, err);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE 연결 오류:', error);
-      eventSource.close();
+      console.error(`❌ CameraDetail(${id}) SSE 연결 오류:`, error);
+      
+      // 3초 후 재연결 시도
+      setTimeout(() => {
+        console.log(`🔄 CameraDetail(${id}) SSE 재연결 시도...`);
+        setupSSE();
+      }, 3000);
     };
 
     return () => {
+      console.log(`🔌 CameraDetail(${id}) SSE 연결 해제`);
       eventSource.close();
     };
   };
@@ -146,9 +190,56 @@ const CameraDetail: React.FC = () => {
     }
   };
 
-  if (loading) return <Typography>로딩 중...</Typography>;
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!camera) return <Alert severity="error">카메라를 찾을 수 없습니다.</Alert>;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>🔍 카메라 데이터 로딩 중...</Typography>
+          <Typography variant="body2" color="textSecondary">
+            카메라 ID: {id}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6">❌ 오류 발생</Typography>
+          <Typography>{error}</Typography>
+        </Alert>
+        <Button 
+          variant="contained" 
+          onClick={() => {
+            setError(null);
+            loadCameraData();
+          }}
+          sx={{ mr: 2 }}
+        >
+          다시 시도
+        </Button>
+        <Button variant="outlined" onClick={() => navigate('/')}>
+          돌아가기
+        </Button>
+      </Box>
+    );
+  }
+  
+  if (!camera) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning">
+          <Typography variant="h6">⚠️ 카메라를 찾을 수 없습니다</Typography>
+          <Typography>카메라 ID: {id}</Typography>
+        </Alert>
+        <Button variant="outlined" onClick={() => navigate('/')} sx={{ mt: 2 }}>
+          돌아가기
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>

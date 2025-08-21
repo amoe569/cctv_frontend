@@ -48,8 +48,20 @@ class ApiService {
   }
 
   async getCameraById(id: string): Promise<Camera> {
-    const response = await this.axiosInstance.get(`/api/cameras/${id}`);
-    return response.data;
+    console.log(`🎯 카메라 조회 요청: ${id}`);
+    try {
+      const response = await this.axiosInstance.get(`/api/cameras/${id}`);
+      console.log(`✅ 카메라 조회 성공: ${id}`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ 카메라 조회 실패: ${id}`, {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error;
+    }
   }
 
   async updateCameraStatus(id: string, status: string): Promise<Camera> {
@@ -107,18 +119,15 @@ export interface Camera {
 
 export interface Event {
   id: string;
+  cameraId: string;
+  cameraName: string;
   type: string;
   severity: number;
   score: number;
   ts: string;
+  bboxJson?: string;
   metaJson?: string;
-  bbox?: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  };
-  camera: Camera;
+  createdAt: string;
 }
 
 export interface Video {

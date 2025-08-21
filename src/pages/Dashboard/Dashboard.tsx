@@ -61,38 +61,55 @@ const Dashboard: React.FC = () => {
   };
 
   const setupSSE = () => {
+    console.log('🔌 Dashboard SSE 연결 설정 중...');
+    
     const eventSource = apiService.createEventStream();
+    
+    eventSource.onopen = () => {
+      console.log('✅ Dashboard SSE 연결 성공');
+    };
     
     eventSource.onmessage = (event) => {
       try {
         const data: Event = JSON.parse(event.data);
-        console.log('SSE 이벤트 수신:', data);
+        console.log('📡 Dashboard SSE 이벤트 수신:', data);
         
         // 알림 표시
         showNotification(
-          `${data.camera.name}에서 ${data.type} 이벤트 발생`,
+          `${data.cameraName}에서 ${data.type} 이벤트 발생`,
           'info'
         );
         
         // 카메라 상태 업데이트 (WARNING 상태로 변경된 경우)
         if (data.type === 'traffic_heavy') {
+          console.log(`🚨 카메라 ${data.cameraId} 상태를 WARNING으로 변경`);
           setCameras(prev => prev.map(camera => 
-            camera.id === data.camera.id 
+            camera.id === data.cameraId 
               ? { ...camera, status: 'WARNING' as const }
               : camera
           ));
         }
+        
+        // 카메라 목록 새로고침 (최신 상태 반영)
+        loadCameras();
+        
       } catch (err) {
-        console.error('SSE 이벤트 파싱 오류:', err);
+        console.error('❌ Dashboard SSE 이벤트 파싱 오류:', err);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE 연결 오류:', error);
-      eventSource.close();
+      console.error('❌ Dashboard SSE 연결 오류:', error);
+      
+      // 3초 후 재연결 시도
+      setTimeout(() => {
+        console.log('🔄 Dashboard SSE 재연결 시도...');
+        setupSSE();
+      }, 3000);
     };
 
     return () => {
+      console.log('🔌 Dashboard SSE 연결 해제');
       eventSource.close();
     };
   };

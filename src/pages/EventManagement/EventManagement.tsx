@@ -51,6 +51,7 @@ const EventManagement: React.FC = () => {
   useEffect(() => {
     loadCameras();
     searchEvents();
+    setupSSE();
   }, []);
 
   const loadCameras = async () => {
@@ -67,11 +68,24 @@ const EventManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       const searchParams = newFilters || filters;
+      
+      console.log('🔍 이벤트 검색 요청:', searchParams);
       const data = await apiService.getEventsWithFilters(searchParams);
+      console.log('✅ 이벤트 검색 응답:', data);
+      console.log('📊 이벤트 개수:', data?.content?.length || 0, '/ 총', data?.totalElements || 0, '개');
+      
       setEvents(data);
-    } catch (err) {
-      setError('이벤트 데이터를 불러오는 중 오류가 발생했습니다.');
-      console.error('이벤트 검색 오류:', err);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || '알 수 없는 오류';
+      const errorStatus = err.response?.status || 'Unknown';
+      
+      console.error('❌ 이벤트 검색 실패:', {
+        status: errorStatus,
+        message: errorMessage,
+        error: err
+      });
+      
+      setError(`이벤트 데이터 로드 실패 (${errorStatus}): ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -104,6 +118,49 @@ const EventManagement: React.FC = () => {
     };
     setFilters(resetFilters);
     searchEvents(resetFilters);
+  };
+
+  const setupSSE = () => {
+    console.log('🔌 EventManagement SSE 연결 설정 중...');
+    
+    const eventSource = apiService.createEventStream();
+    
+    eventSource.onopen = () => {
+      console.log('✅ EventManagement SSE 연결 성공');
+    };
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📡 EventManagement SSE 이벤트 수신:', data);
+        
+        // 새로운 이벤트가 현재 필터 조건에 맞는지 확인하고 목록 새로고침
+        if (!filters.cameraId || filters.cameraId === data.cameraId) {
+          if (!filters.eventType || filters.eventType === data.type) {
+            console.log('🔄 새 이벤트로 인한 목록 새로고침');
+            searchEvents(filters);
+          }
+        }
+        
+      } catch (err) {
+        console.error('❌ EventManagement SSE 이벤트 파싱 오류:', err);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('❌ EventManagement SSE 연결 오류:', error);
+      
+      // 3초 후 재연결 시도
+      setTimeout(() => {
+        console.log('🔄 EventManagement SSE 재연결 시도...');
+        setupSSE();
+      }, 3000);
+    };
+
+    return () => {
+      console.log('🔌 EventManagement SSE 연결 해제');
+      eventSource.close();
+    };
   };
 
   return (
@@ -277,9 +334,9 @@ const EventManagement: React.FC = () => {
                       
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {getCameraStatusIcon(event.camera.status)}
+                          {/* 카메라 상태는 별도 API 호출이 필요하므로 일단 기본값 사용 */}
                           <Typography variant="body2">
-                            {event.camera.name}
+                            {event.cameraName}
                           </Typography>
                         </Box>
                       </TableCell>
@@ -333,11 +390,18 @@ const EventManagement: React.FC = () => {
                               {meta.message}
                             </Typography>
                           )}
-                          {event.bbox && event.bbox.w > 0 && (
-                            <Typography variant="caption" color="text.secondary">
-                              위치: ({event.bbox.x}, {event.bbox.y}) {event.bbox.w}×{event.bbox.h}
-                            </Typography>
-                          )}
+                          {(() => {
+                            try {
+                              const bbox = event.bboxJson ? JSON.parse(event.bboxJson) : null;
+                              return bbox && bbox.w > 0 ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  위치: ({bbox.x}, {bbox.y}) {bbox.w}×{bbox.h}
+                                </Typography>
+                              ) : null;
+                            } catch {
+                              return null;
+                            }
+                          })()}
                         </Box>
                       </TableCell>
                     </TableRow>
